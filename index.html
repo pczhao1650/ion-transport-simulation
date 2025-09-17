@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>离子主动运输模拟器 - Ion Transport Simulation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .simulation-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-group {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #e9ecef;
+        }
+
+        .control-group h3 {
+            color: #495057;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .slider-container {
+            margin-bottom: 10px;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .slider {
+            width: 100%;
+            height: 8px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #667eea;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .value-display {
+            text-align: center;
+            font-weight: bold;
+            color: #667eea;
+            margin-top: 5px;
+        }
+
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            margin: 5px;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #simulationCanvas {
+            border: 3px solid #667eea;
+            border-radius: 10px;
+            display: block;
+            margin: 20px auto;
+            background: linear-gradient(180deg, #e3f2fd 0%, #f3e5f5 100%);
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .stat-card h3 {
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .graph-container {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .graph-container h3 {
+            color: #495057;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        #transportGraph {
+            border: 2px solid #dee2e6;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .info-panel {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .info-panel h3 {
+            color: #8B4513;
+            margin-bottom: 10px;
+        }
+
+        .info-panel p {
+            color: #654321;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+            
+            #simulationCanvas {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧬 离子主动运输模拟器</h1>
+        <p>探索细胞膜上离子主动运输的机制和影响因素</p>
+    </div>
+
+    <div class="simulation-container">
+        <div class="controls">
+            <div class="control-group">
+                <h3>转运蛋白数量</h3>
+                <div class="slider-container">
+                    <label>膜上转运蛋白数量</label>
+                    <input type="range" id="proteinCount" class="slider" min="0" max="100" value="50">
+                    <div class="value-display" id="proteinValue">50</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>细胞能量水平</h3>
+                <div class="slider-container">
+                    <label>ATP浓度 (mM)</label>
+                    <input type="range" id="atpLevel" class="slider" min="0" max="10" value="5" step="0.1">
+                    <div class="value-display" id="atpValue">5.0 mM</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>细胞外离子浓度</h3>
+                <div class="slider-container">
+                    <label>Na⁺浓度 (mM)</label>
+                    <input type="range" id="naConcentration" class="slider" min="0" max="200" value="100">
+                    <div class="value-display" id="naValue">100 mM</div>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <h3>控制面板</h3>
+                <button id="startBtn">开始模拟</button>
+                <button id="pauseBtn" disabled>暂停</button>
+                <button id="resetBtn">重置</button>
+                <button id="addIonBtn">添加离子</button>
+            </div>
+        </div>
+
+        <canvas id="simulationCanvas" width="800" height="400"></canvas>
+
+        <div class="stats">
+            <div class="stat-card">
+                <h3>运输速率</h3>
+                <div class="stat-value" id="transportRate">0</div>
+                <small>离子/秒</small>
+            </div>
+            <div class="stat-card">
+                <h3>细胞内离子</h3>
+                <div class="stat-value" id="intracellularIons">0</div>
+                <small>离子数量</small>
+            </div>
+            <div class="stat-card">
+                <h3>能量消耗</h3>
+                <div class="stat-value" id="energyConsumption">0</div>
+                <small>ATP/秒</small>
+            </div>
+            <div class="stat-card">
+                <h3>效率</h3>
+                <div class="stat-value" id="efficiency">0%</div>
+                <small>运输效率</small>
+            </div>
+        </div>
+
+        <div class="graph-container">
+            <h3>运输速率变化图</h3>
+            <canvas id="transportGraph" width="760" height="200"></canvas>
+        </div>
+
+        <div class="info-panel">
+            <h3>模拟说明</h3>
+            <p>这个模拟器展示了离子主动运输的过程。转运蛋白数量影响运输能力，ATP浓度决定可用能量，细胞外离子浓度提供运输驱动力。观察不同参数如何影响离子运输速率和细胞内的离子积累。</p>
+        </div>
+    </div>
+
+    <script>
+        class IonTransportSimulation {
+            constructor() {
+                this.canvas = document.getElementById('simulationCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.graphCanvas = document.getElementById('transportGraph');
+                this.graphCtx = this.graphCanvas.getContext('2d');
+                
+                this.isRunning = false;
+                this.frameCount = 0;
+                this.transportRate = 0;
+                this.intracellularIons = 0;
+                this.energyConsumption = 0;
+                this.efficiency = 0;
+                
+                this.ions = [];
+                this.proteins = [];
+                this.transportHistory = [];
+                
+                this.initializeSimulation();
+                this.setupEventListeners();
+                this.draw();
+            }
+
+            initializeSimulation() {
+                // 初始化转运蛋白
+                this.proteins = [];
+                const proteinCount = parseInt(document.getElementById('proteinCount').value);
+                for (let i = 0; i < proteinCount; i++) {
+                    this.proteins.push({
+                        x: 200 + (i * 400 / proteinCount),
+                        y: 200,
+                        active: false,
+                        ionCount: 0
+                    });
+                }
+
+                // 初始化细胞外离子
+                this.ions = [];
+                const naConcentration = parseInt(document.getElementById('naConcentration').value);
+                for (let i = 0; i < naConcentration / 2; i++) {
+                    this.ions.push({
+                        x: Math.random() * 200 + 50,
+                        y: Math.random() * 400,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        transported: false,
+                        color: '#FF6B6B'
+                    });
+                }
+            }
+
+            setupEventListeners() {
+                // 滑块事件
+                document.getElementById('proteinCount').addEventListener('input', (e) => {
+                    document.getElementById('proteinValue').textContent = e.target.value;
+                    this.initializeSimulation();
+                });
+
+                document.getElementById('atpLevel').addEventListener('input', (e) => {
+                    document.getElementById('atpValue').textContent = e.target.value + ' mM';
+                });
+
+                document.getElementById('naConcentration').addEventListener('input', (e) => {
+                    document.getElementById('naValue').textContent = e.target.value + ' mM';
+                    this.initializeSimulation();
+                });
+
+                // 按钮事件
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('pauseBtn').addEventListener('click', () => this.pause());
+                document.getElementById('resetBtn').addEventListener('click', () => this.reset());
+                document.getElementById('addIonBtn').addEventListener('click', () => this.addIons());
+            }
+
+            start() {
+                this.isRunning = true;
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('pauseBtn').disabled = false;
+                this.gameLoop();
+            }
+
+            pause() {
+                this.isRunning = false;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+            }
+
+            reset() {
+                this.pause();
+                this.frameCount = 0;
+                this.transportRate = 0;
+                this.intracellularIons = 0;
+                this.energyConsumption = 0;
+                this.efficiency = 0;
+                this.transportHistory = [];
+                this.initializeSimulation();
+                this.updateStats();
+                this.draw();
+                this.drawGraph();
+            }
+
+            addIons() {
+                const naConcentration = parseInt(document.getElementById('naConcentration').value);
+                for (let i = 0; i < 10; i++) {
+                    this.ions.push({
+                        x: Math.random() * 200 + 50,
+                        y: Math.random() * 400,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2,
+                        transported: false,
+                        color: '#FF6B6B'
+                    });
+                }
+            }
+
+            gameLoop() {
+                if (!this.isRunning) return;
+
+                this.update();
+                this.draw();
+                this.frameCount++;
+
+                // 每60帧更新一次统计
+                if (this.frameCount % 60 === 0) {
+                    this.updateStats();
+                    this.updateGraph();
+                }
+
+                requestAnimationFrame(() => this.gameLoop());
+            }
+
+            update() {
+                // 更新离子位置
+                this.ions.forEach(ion => {
+                    if (!ion.transported) {
+                        ion.x += ion.vx;
+                        ion.y += ion.vy;
+
+                        // 边界检测
+                        if (ion.x < 0 || ion.x > 200) ion.vx *= -1;
+                        if (ion.y < 0 || ion.y > 400) ion.vy *= -1;
+
+                        // 保持在边界内
+                        ion.x = Math.max(0, Math.min(200, ion.x));
+                        ion.y = Math.max(0, Math.min(400, ion.y));
+                    }
+                });
+
+                // 检查离子与转运蛋白的相互作用
+                this.proteins.forEach(protein => {
+                    protein.active = false;
+                    protein.ionCount = 0;
+
+                    this.ions.forEach(ion => {
+                        if (!ion.transported) {
+                            const distance = Math.sqrt(
+                                Math.pow(ion.x - protein.x, 2) + 
+                                Math.pow(ion.y - protein.y, 2)
+                            );
+
+                            if (distance < 30) {
+                                protein.active = true;
+                                protein.ionCount++;
+
+                                // 运输概率基于ATP浓度
+                                const atpLevel = parseFloat(document.getElementById('atpLevel').value);
+                                const transportProbability = (atpLevel / 10) * 0.02;
+
+                                if (Math.random() < transportProbability) {
+                                    ion.transported = true;
+                                    ion.x = protein.x + 100;
+                                    ion.y = protein.y;
+                                    this.intracellularIons++;
+                                    this.energyConsumption += 1;
+                                }
+                            }
+                        }
+                    });
+                });
+
+                // 计算运输速率
+                this.transportRate = this.energyConsumption / (this.frameCount / 60);
+                this.efficiency = this.intracellularIons > 0 ? 
+                    (this.intracellularIons / (this.energyConsumption + 1)) * 100 : 0;
+            }
+
+            draw() {
+                // 清空画布
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // 绘制细胞膜
+                this.ctx.strokeStyle = '#333';
+                this.ctx.lineWidth = 4;
+                this.ctx.beginPath();
+                this.ctx.moveTo(200, 0);
+                this.ctx.lineTo(200, 400);
+                this.ctx.stroke();
+
+                // 绘制细胞外区域标签
+                this.ctx.fillStyle = '#666';
+                this.ctx.font = '16px Arial';
+                this.ctx.fillText('细胞外', 50, 30);
+
+                // 绘制细胞内区域标签
+                this.ctx.fillText('细胞内', 250, 30);
+
+                // 绘制转运蛋白
+                this.proteins.forEach(protein => {
+                    this.ctx.fillStyle = protein.active ? '#4CAF50' : '#9E9E9E';
+                    this.ctx.beginPath();
+                    this.ctx.arc(protein.x, protein.y, 15, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#333';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+
+                    // 绘制离子计数
+                    if (protein.ionCount > 0) {
+                        this.ctx.fillStyle = '#333';
+                        this.ctx.font = '12px Arial';
+                        this.ctx.fillText(protein.ionCount.toString(), protein.x - 5, protein.y - 20);
+                    }
+                });
+
+                // 绘制离子
+                this.ions.forEach(ion => {
+                    this.ctx.fillStyle = ion.transported ? '#4CAF50' : ion.color;
+                    this.ctx.beginPath();
+                    this.ctx.arc(ion.x, ion.y, 6, 0, Math.PI * 2);
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#333';
+                    this.ctx.lineWidth = 1;
+                    this.ctx.stroke();
+                });
+
+                // 绘制ATP分子
+                const atpLevel = parseFloat(document.getElementById('atpLevel').value);
+                for (let i = 0; i < atpLevel * 2; i++) {
+                    this.ctx.fillStyle = '#FFD700';
+                    this.ctx.beginPath();
+                    this.ctx.arc(250 + (i % 10) * 20, 50 + Math.floor(i / 10) * 20, 4, 0, Math.PI * 2);
+                    this.ctx.fill();
+                }
+
+                // 绘制信息
+                this.ctx.fillStyle = '#333';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(`帧数: ${this.frameCount}`, 10, 380);
+            }
+
+            updateStats() {
+                document.getElementById('transportRate').textContent = this.transportRate.toFixed(2);
+                document.getElementById('intracellularIons').textContent = this.intracellularIons;
+                document.getElementById('energyConsumption').textContent = this.energyConsumption;
+                document.getElementById('efficiency').textContent = this.efficiency.toFixed(1);
+            }
+
+            updateGraph() {
+                this.transportHistory.push({
+                    time: this.frameCount / 60,
+                    rate: this.transportRate
+                });
+
+                // 保持最近100个数据点
+                if (this.transportHistory.length > 100) {
+                    this.transportHistory.shift();
+                }
+
+                this.drawGraph();
+            }
+
+            drawGraph() {
+                const ctx = this.graphCtx;
+                const canvas = this.graphCanvas;
+                
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (this.transportHistory.length < 2) return;
+
+                // 绘制坐标轴
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(50, 20);
+                ctx.lineTo(50, canvas.height - 20);
+                ctx.lineTo(canvas.width - 20, canvas.height - 20);
+                ctx.stroke();
+
+                // 绘制标签
+                ctx.fillStyle = '#333';
+                ctx.font = '12px Arial';
+                ctx.fillText('运输速率', 10, 15);
+                ctx.fillText('时间 (秒)', canvas.width - 60, canvas.height - 5);
+
+                // 绘制数据线
+                ctx.strokeStyle = '#667eea';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+
+                const maxRate = Math.max(...this.transportHistory.map(d => d.rate));
+                const maxTime = Math.max(...this.transportHistory.map(d => d.time));
+
+                this.transportHistory.forEach((point, index) => {
+                    const x = 50 + (point.time / maxTime) * (canvas.width - 70);
+                    const y = canvas.height - 20 - (point.rate / maxRate) * (canvas.height - 40);
+
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+
+                ctx.stroke();
+            }
+        }
+
+        // 初始化模拟器
+        const simulation = new IonTransportSimulation();
+    </script>
+</body>
+</html>
