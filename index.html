@@ -85,6 +85,7 @@
             background: #ddd;
             outline: none;
             -webkit-appearance: none;
+            appearance: none;
         }
 
         .slider::-webkit-slider-thumb {
@@ -184,7 +185,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>🧬 离子主动运输模拟器</h1>
+        <h1>离子主动运输模拟器</h1>
     </div>
 
     <div class="simulation-container">
@@ -192,27 +193,24 @@
             <div class="control-group">
                 <h3>转运蛋白数量</h3>
                 <div class="slider-container">
-                    <label>膜上转运蛋白数量</label>
-                    <input type="range" id="proteinCount" class="slider" min="0" max="10" value="3">
-                    <div class="value-display" id="proteinValue">3</div>
+                    <input type="range" id="proteinCount" class="slider" min="0" max="10" value="0">
+                    <div class="value-display" id="proteinValue">0</div>
                 </div>
             </div>
 
             <div class="control-group">
                 <h3>细胞能量水平</h3>
                 <div class="slider-container">
-                    <label>ATP浓度 (mM)</label>
-                    <input type="range" id="atpLevel" class="slider" min="0" max="10" value="5" step="0.1">
-                    <div class="value-display" id="atpValue">5.0 mM</div>
+                    <input type="range" id="atpLevel" class="slider" min="0" max="30" value="0" step="1">
+                    <div class="value-display" id="atpValue">0</div>
                 </div>
             </div>
 
             <div class="control-group">
                 <h3>细胞外离子浓度</h3>
                 <div class="slider-container">
-                    <label>Na⁺浓度 (mM)</label>
-                    <input type="range" id="naConcentration" class="slider" min="0" max="200" value="100">
-                    <div class="value-display" id="naValue">100 mM</div>
+                    <input type="range" id="naConcentration" class="slider" min="0" max="30" value="0">
+                    <div class="value-display" id="naValue">0</div>
                 </div>
             </div>
 
@@ -279,8 +277,8 @@
                 this.ions = [];
                 const naConcentration = parseInt(document.getElementById('naConcentration').value);
                 
-                // 细胞外离子（低浓度）
-                for (let i = 0; i < naConcentration / 8; i++) { // 细胞外离子数量较少
+                // 细胞外离子数量（根据浓度调整，范围0-30对应0-30个离子）
+                for (let i = 0; i < naConcentration; i++) {
                     this.ions.push({
                         x: Math.random() * (this.membraneX - 50) + 25,
                         y: Math.random() * this.canvas.height,
@@ -291,8 +289,8 @@
                     });
                 }
 
-                // 细胞内离子（高浓度）
-                for (let i = 0; i < naConcentration / 3; i++) { // 细胞内离子数量较多
+                // 细胞内离子数量（固定为50个，确保始终大于细胞外浓度）
+                for (let i = 0; i < 50; i++) {
                     this.ions.push({
                         x: this.membraneX + 50 + Math.random() * (this.canvas.width - this.membraneX - 100),
                         y: Math.random() * this.canvas.height,
@@ -313,12 +311,12 @@
                 });
 
                 document.getElementById('atpLevel').addEventListener('input', (e) => {
-                    document.getElementById('atpValue').textContent = e.target.value + ' mM';
+                    document.getElementById('atpValue').textContent = e.target.value;
                     this.updateGraph(); // 参数变化时更新图表
                 });
 
                 document.getElementById('naConcentration').addEventListener('input', (e) => {
-                    document.getElementById('naValue').textContent = e.target.value + ' mM';
+                    document.getElementById('naValue').textContent = e.target.value;
                     this.initializeSimulation();
                     this.updateGraph(); // 参数变化时更新图表
                 });
@@ -362,58 +360,108 @@
                 this.draw();
                 this.frameCount++;
 
+                // 每30帧（约0.5秒）更新一次图表
+                if (this.frameCount % 30 === 0) {
+                    this.updateGraph();
+                }
+
                 requestAnimationFrame(() => this.gameLoop());
             }
 
-            // 计算运输速率（基于三个参数的饱和函数）
+            // 计算运输速率（简单直观的逻辑，适合高中生物教学）
             calculateTransportRate() {
                 const proteinCount = parseInt(document.getElementById('proteinCount').value);
                 const atpLevel = parseFloat(document.getElementById('atpLevel').value);
                 const naConcentration = parseInt(document.getElementById('naConcentration').value);
 
-                // 转运蛋白饱和函数：Vmax * (n / (n + K1))
-                const proteinFactor = (proteinCount / (proteinCount + 2)); // K1 = 2
+                // 如果没有转运蛋白，速率为0
+                if (proteinCount === 0) {
+                    return 0;
+                }
 
-                // ATP饱和函数：Vmax * (ATP / (ATP + K2))
-                const atpFactor = (atpLevel / (atpLevel + 3)); // K2 = 3
+                // 转运蛋白因子：线性增长，最大值为10
+                const proteinFactor = Math.min(proteinCount, 10) / 10;
 
-                // 离子浓度饱和函数：Vmax * (C / (C + K3))
-                const concentrationFactor = (naConcentration / (naConcentration + 50)); // K3 = 50
+                // ATP饱和点 = 转运蛋白数量 × 2
+                const atpSaturation = proteinCount * 2;
+                const atpFactor = Math.min(atpLevel, atpSaturation) / atpSaturation;
 
-                // 综合运输速率 = 基础速率 * 三个因子的乘积
-                const baseRate = 10; // 基础运输速率
+                // 离子浓度饱和点 = 转运蛋白数量 × 2
+                const concentrationSaturation = proteinCount * 2;
+                const concentrationFactor = Math.min(naConcentration, concentrationSaturation) / concentrationSaturation;
+
+                // 综合运输速率 = 基础速率 × 三个因子的乘积
+                const baseRate = 10;
                 const transportRate = baseRate * proteinFactor * atpFactor * concentrationFactor;
 
                 return transportRate;
             }
 
             update() {
-                // 更新离子位置
+                // 更新离子位置 - 使用随机游走模拟布朗运动
                 this.ions.forEach(ion => {
                     if (!ion.transported) {
-                        // 细胞外离子可以移动
+                        // 细胞外离子：随机游走（布朗运动）
+                        // 每帧随机改变一点速度方向
+                        ion.vx += (Math.random() - 0.5) * 0.2;
+                        ion.vy += (Math.random() - 0.5) * 0.2;
+                        
+                        // 限制速度大小
+                        const speed = Math.sqrt(ion.vx * ion.vx + ion.vy * ion.vy);
+                        if (speed > 1.5) {
+                            ion.vx = (ion.vx / speed) * 1.5;
+                            ion.vy = (ion.vy / speed) * 1.5;
+                        }
+                        
                         ion.x += ion.vx;
                         ion.y += ion.vy;
 
-                        // 边界检测 - 不能穿过细胞膜
-                        if (ion.x < 0 || ion.x > this.membraneX - 25) ion.vx *= -1;
-                        if (ion.y < 0 || ion.y > this.canvas.height) ion.vy *= -1;
-
-                        // 保持在边界内
-                        ion.x = Math.max(0, Math.min(this.membraneX - 25, ion.x));
-                        ion.y = Math.max(0, Math.min(this.canvas.height, ion.y));
+                        // 边界检测 - 只限制画布左侧和上下边界
+                        if (ion.x < 10) {
+                            ion.x = 10;
+                            ion.vx = Math.abs(ion.vx) * 0.5; // 向内移动
+                        }
+                        // 移除细胞膜处的边界限制，让离子可以自由接近转运蛋白
+                        if (ion.y < 10) {
+                            ion.y = 10;
+                            ion.vy = Math.abs(ion.vy) * 0.5;
+                        }
+                        if (ion.y > this.canvas.height - 10) {
+                            ion.y = this.canvas.height - 10;
+                            ion.vy = -Math.abs(ion.vy) * 0.5;
+                        }
                     } else {
-                        // 细胞内离子也可以轻微移动
-                        ion.x += ion.vx * 0.3;
-                        ion.y += ion.vy * 0.3;
+                        // 细胞内离子：更缓慢的随机游走
+                        ion.vx += (Math.random() - 0.5) * 0.1;
+                        ion.vy += (Math.random() - 0.5) * 0.1;
+                        
+                        // 限制速度
+                        const speed = Math.sqrt(ion.vx * ion.vx + ion.vy * ion.vy);
+                        if (speed > 0.8) {
+                            ion.vx = (ion.vx / speed) * 0.8;
+                            ion.vy = (ion.vy / speed) * 0.8;
+                        }
+                        
+                        ion.x += ion.vx;
+                        ion.y += ion.vy;
 
-                        // 边界检测 - 不能离开细胞内区域
-                        if (ion.x < this.membraneX + 50 || ion.x > this.canvas.width - 25) ion.vx *= -1;
-                        if (ion.y < 0 || ion.y > this.canvas.height) ion.vy *= -1;
-
-                        // 保持在边界内
-                        ion.x = Math.max(this.membraneX + 50, Math.min(this.canvas.width - 25, ion.x));
-                        ion.y = Math.max(0, Math.min(this.canvas.height, ion.y));
+                        // 边界检测 - 柔和地限制在细胞内区域
+                        if (ion.x < this.membraneX + 60) {
+                            ion.x = this.membraneX + 60;
+                            ion.vx = Math.abs(ion.vx) * 0.5;
+                        }
+                        if (ion.x > this.canvas.width - 10) {
+                            ion.x = this.canvas.width - 10;
+                            ion.vx = -Math.abs(ion.vx) * 0.5;
+                        }
+                        if (ion.y < 10) {
+                            ion.y = 10;
+                            ion.vy = Math.abs(ion.vy) * 0.5;
+                        }
+                        if (ion.y > this.canvas.height - 10) {
+                            ion.y = this.canvas.height - 10;
+                            ion.vy = -Math.abs(ion.vy) * 0.5;
+                        }
                     }
                 });
 
@@ -422,7 +470,7 @@
                     protein.active = false;
 
                     this.ions.forEach(ion => {
-                        if (!ion.transported) { // 只处理细胞外离子
+                        if (!ion.transported && !ion.justTransported) { // 只处理细胞外离子，且未被标记为刚运输过的
                             const distance = Math.sqrt(
                                 Math.pow(ion.x - protein.x, 2) + 
                                 Math.pow(ion.y - protein.y, 2)
@@ -431,25 +479,29 @@
                             if (distance < 30) {
                                 protein.active = true;
 
-                                // 运输概率基于ATP浓度
-                                const atpLevel = parseFloat(document.getElementById('atpLevel').value);
-                                const transportProbability = (atpLevel / 10) * 0.05; // 提高运输概率
-
-                                if (Math.random() < transportProbability) {
-                                    // 标记为已运输
-                                    ion.transported = true;
-                                    // 移动到细胞内位置
-                                    ion.x = protein.x + 50;
-                                    ion.y = protein.y;
-                                    // 设置细胞内运动速度
-                                    ion.vx = (Math.random() - 0.5) * 1;
-                                    ion.vy = (Math.random() - 0.5) * 1;
-                                    this.intracellularIons++;
-                                    this.energyConsumption += 1;
-                                }
+                                // 100%运输，不需要概率判断
+                                // 标记为已运输
+                                ion.transported = true;
+                                ion.justTransported = true; // 防止重复触发
+                                // 移动到细胞内位置
+                                ion.x = protein.x + 50;
+                                ion.y = protein.y;
+                                // 设置细胞内运动速度
+                                ion.vx = (Math.random() - 0.5) * 1;
+                                ion.vy = (Math.random() - 0.5) * 1;
+                                this.intracellularIons++;
+                                this.energyConsumption += 1;
                             }
                         }
                     });
+                });
+
+                // 阻止未被运输的细胞外离子穿过细胞膜
+                this.ions.forEach(ion => {
+                    if (!ion.transported && ion.x > this.membraneX - 20) {
+                        ion.x = this.membraneX - 20;
+                        ion.vx = -Math.abs(ion.vx) * 0.5; // 反弹回细胞外
+                    }
                 });
 
                 // 计算运输速率（基于参数，不考虑随机运动）
@@ -574,16 +626,13 @@
                 // 计算当前运输速率
                 const currentRate = this.calculateTransportRate();
                 
-                // 添加到历史记录
+                // 添加到历史记录（保留所有数据，不删除）
                 this.transportHistory.push({
                     time: this.frameCount / 60,
                     rate: currentRate
                 });
 
-                // 保持最近100个数据点
-                if (this.transportHistory.length > 100) {
-                    this.transportHistory.shift();
-                }
+                // 不删除历史数据，全部保留
 
                 this.drawGraph();
             }
@@ -596,6 +645,16 @@
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                 if (this.transportHistory.length < 2) return;
+
+                // 固定时间窗口：显示最近50秒的数据
+                const timeWindow = 50; // 秒
+                const currentTime = this.transportHistory[this.transportHistory.length - 1].time;
+                const startTime = Math.max(0, currentTime - timeWindow);
+
+                // 筛选出时间窗口内的数据
+                const visibleData = this.transportHistory.filter(point => point.time >= startTime);
+
+                if (visibleData.length < 2) return;
 
                 // 绘制坐标轴
                 ctx.strokeStyle = '#333';
@@ -612,16 +671,26 @@
                 ctx.fillText('运输速率', 10, 15);
                 ctx.fillText('时间 (秒)', canvas.width - 60, canvas.height - 5);
 
+                // 绘制时间刻度
+                ctx.fillStyle = '#666';
+                ctx.font = '10px Arial';
+                const endTime = currentTime;
+                for (let t = Math.ceil(startTime / 10) * 10; t <= endTime; t += 10) {
+                    const x = 50 + ((t - startTime) / timeWindow) * (canvas.width - 70);
+                    ctx.fillText(t.toFixed(0), x - 10, canvas.height - 5);
+                }
+
                 // 绘制数据线
                 ctx.strokeStyle = '#667eea';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
 
-                const maxRate = Math.max(...this.transportHistory.map(d => d.rate));
-                const maxTime = Math.max(...this.transportHistory.map(d => d.time));
+                const maxRate = Math.max(...visibleData.map(d => d.rate), 0.1); // 至少0.1避免除以0
 
-                this.transportHistory.forEach((point, index) => {
-                    const x = 50 + (point.time / maxTime) * (canvas.width - 70);
+                visibleData.forEach((point, index) => {
+                    // X轴：时间映射到固定窗口
+                    const x = 50 + ((point.time - startTime) / timeWindow) * (canvas.width - 70);
+                    // Y轴：根据速率值缩放
                     const y = canvas.height - 20 - (point.rate / maxRate) * (canvas.height - 40);
 
                     if (index === 0) {
@@ -636,7 +705,8 @@
                 // 显示当前运输速率值
                 ctx.fillStyle = '#667eea';
                 ctx.font = '14px Arial';
-                ctx.fillText(`当前运输速率: ${this.transportHistory[this.transportHistory.length - 1].rate.toFixed(2)}`, 10, canvas.height - 5);
+                const currentRate = this.transportHistory[this.transportHistory.length - 1].rate.toFixed(2);
+                ctx.fillText(`当前运输速率: ${currentRate}`, 10, canvas.height - 5);
             }
         }
 
